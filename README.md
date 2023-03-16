@@ -1,8 +1,8 @@
-# DR-DiffuSE (Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement)
+# DR-DiffuSE
 
 ---
 ## Brief
-This is the implementation of **DR-DiffuSE** by **PyTorch**. 
+This is the implementation of **DR-DiffuSE** (Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement) by **PyTorch**. 
 
 [Paper]() 
 
