@@ -74,6 +74,13 @@ class VBDDPMTrainer(BasicTrainer):
         noise_level = np.cumprod(1 - beta)  # noise_level --> alpha^bar
         self.noise_level = torch.tensor(noise_level.astype(np.float32)).to(self.opt.device)
 
+        # load conditon generator
+        if opt.c_gen:
+            self.c_gen = Base()
+            checkpoint = torch.load("./asset/selected_model/base_model_pesq_312.pth")
+            self.c_gen.load_state_dict(checkpoint['model_state_dict'])
+            self.c_gen.to(opt.device)
+
     def inference_schedule(self, fast_sampling=False):
         """
         Compute fixed parameters in ddpm
@@ -157,7 +164,11 @@ class VBDDPMTrainer(BasicTrainer):
         noise = torch.randn_like(batch_label)  # epsilon           [N, 2, T, F]
         noisy_audio = noise_scale_sqrt * (batch_label) + (1.0 - noise_scale) ** 0.5 * noise
 
-        condition = batch_feat
+        if self.opt.c_gen:
+            # with torch.no_grad():
+            condition = self.c_gen(batch_feat)['est_comp']
+        else:
+            condition = batch_feat
 
         out = self.model_ddpm(noisy_audio, condition, t)
         loss = com_mse_loss(out['est_noise'], noise, x['frame_num_list'])
@@ -291,7 +302,12 @@ class VBDDPMTrainer(BasicTrainer):
                         continue
                 # discard run_step function
                 batch_feat, batch_label = self.data_compress(batch)
-                condition = batch_feat
+                if self.opt.c_gen:
+                    # with torch.no_grad():
+                    condition = self.c_gen(batch_feat)['est_comp']
+                else:
+                    condition = batch_feat
+                # condition = batch_feat
                 spec = torch.randn_like(condition)
                 temp = spec  # for draw
                 N = batch_label.shape[0]  # Batch size

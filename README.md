@@ -54,7 +54,7 @@ python src/train_ddpm.py --model DiffuSEC --lr 0.0002 --wandb
 ```
 After training, we run:
 ```
-python src/test_ddpm.py --model DiffuSEC
+python src/test_ddpm.py --model DiffuSEC --batch_size 1
 ```
 Note that we save the checkpoint per epoch and automatically select the best model for evaluation, you can manually modify the path of the pre-trained model (see ``src/test_ddpm.py`` and ``src/ddpm_trainer.py``).
 
@@ -73,7 +73,7 @@ where ``n`` denotes noise, ``c`` denotes condition, ``g`` denotes generated, and
 <img src="asset/data/DR-DiffuSE-workflow.png" width = "50%" height = "50%" alt="DR-DiffuSE-workflow" align=center />
 
 **3 condition injecting strategies**:
-- Auxiliary conditional generation network
+- Auxiliary condition generator
 - Dual-path parallel network architecture
 - Non-parameterized condition guidance
 
@@ -84,7 +84,37 @@ where ``n`` denotes noise, ``c`` denotes condition, ``g`` denotes generated, and
 **Architecture of DR-DiffuSE:**
 <img src="asset/data/DR-DiffuSE-arc.png" alt="DR-DiffuSE-arc" align=center />
 
-**--Work in progress...**
+**<font color=green>Auxiliary Condition Generator</font>**
+The first strategy for the condition collapse problem is to design an auxiliary condition generator to get a better condition signal.
+
+To achieve this, we first use `src/model/Base.py` as an auxiliary condition generator and train it for 10~30 epochs:
+```
+python src/train.py --lr 0.001 --n_epoch 30 --wandb
+```
+Then we train the ddpm model via running:
+```
+python src/train_ddpm.py --model DiffuSEC --c_gen --lr 0.0002 --wandb
+```
+After training, we run:
+```
+python src/test_ddpm.py --model DiffuSEC --c_gen --batch_size 1
+```
+
+<img src="asset/data/DiffuSEC-C-monitor.png" alt="DiffuSEC-C-monitor" align=center />
+
+We can see that two (test) loss curves have similar trend, and the one with better condition signal also perform better. Again, we show the difference between the initial gaussian, condition (noisy), generated, and ground truth:
+
+![Condition ](asset/data/DIffuSEC-C-sample.jpg)
+
+And this version is slightly better compared to the vanilla one.
+
+**<font color=green>Dual-path Parallel Network Architecture</font>**
+
+Given the loss curves above, we want to design a more fine-grained architecture for condition delivery.
+
+**work in progress**
+
+**<font color=green>Non-parameterized Condition Guidance</font>**
 
 ### Acknowledgments
 We would like to thank the authors of previous related projects for generously sharing their code and insights:

@@ -8,7 +8,6 @@ from model import *
 from ddpm_trainer import *
 from utils import *
 
-# os.environ['WANDB_MODE'] = 'offline'
 
 def main(opt):
     if opt.seed > 0:
@@ -50,7 +49,7 @@ def main(opt):
     model = eval(opt.model)(opt.params)
 
     '''load trainer'''
-    trainer = VBDDPMTrainer(tr_data, cv_data, model, console, logger, opt)
+    trainer = VBDDPMTrainer(tr_data, cv_data, model, console, logger,  opt)
     trainer.train()
 
 

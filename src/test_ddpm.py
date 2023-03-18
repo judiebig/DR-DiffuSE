@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--seed', type=int, default=2023, help='manual seed')
-
+    parser.add_argument('--c_gen', action='store_true', help='choose to use condition generated from condition generator')
     parser.add_argument('--model', type=str, default="DiffuSEC", help='Base/DiffuSEC/...')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--n_epoch', type=int, default=50, help='number of epoch')
