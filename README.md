@@ -12,9 +12,9 @@ We give a deep-insight analysis of why condition collapse happens in speech enha
 
 ---
 
-## Status
+<!-- ## Status
 **★★★ Still working in progress ★★★**
-Since the NSFC application is concentrated in March, these days are relatively busy...
+Since the NSFC application is concentrated in March, these days are relatively busy... -->
 
 ### Environment Requirements
 We run the code on a computer with 2 * RTX-3090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
