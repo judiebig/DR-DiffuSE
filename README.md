@@ -70,7 +70,7 @@ where ``n`` denotes noise, ``c`` denotes condition, ``g`` denotes generated, and
 
 **Workflow of DR-DiffuSE:**
 
-<img src="asset/data/DR-DiffuSE-workflow.png" width = "65%" height = "30%" alt="DR-DiffuSE-workflow" align=center />
+<img src="asset/data/DR-DiffuSE-workflow.png" width = "50%" height = "35%" alt="DR-DiffuSE-workflow" align=center />
 
 **3 condition injecting strategies**:
 - Auxiliary condition generator
