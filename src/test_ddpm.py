@@ -43,7 +43,7 @@ def main(opt):
     )
 
     model = eval(opt.model)(opt.params)
-    checkpoint = torch.load("/home/icdm/twx/DR-DiffuSE/asset/model/DiffuSEC_best.pth")
+    checkpoint = torch.load(f"/home/icdm/twx/DR-DiffuSE/asset/model/{model.__class__.__name__}_33.pth")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(args.device)
 
@@ -57,7 +57,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=2023, help='manual seed')
     parser.add_argument('--c_gen', action='store_true', help='choose to use condition generated from condition generator')
-    parser.add_argument('--model', type=str, default="DiffuSEC", help='Base/DiffuSEC/...')
+    parser.add_argument('--c_guidance', action='store_true', help='choose to use explicit condition guidance during inference')
+    parser.add_argument('--refine', action='store_true', help='choose to refine spectrogram after ddpm inference')
+    parser.add_argument('--model', type=str, default="DiffuSEC", help='Base/DiffuSEC/DiffuSE/...')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
     parser.add_argument('--n_epoch', type=int, default=50, help='number of epoch')
     parser.add_argument('--batch_size', type=int, default=8)

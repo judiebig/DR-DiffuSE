@@ -8,6 +8,7 @@ from metric import *
 from loss import *
 from rich.progress import Progress
 from model import *
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 
@@ -311,7 +312,7 @@ class VBDDPMTrainer(BasicTrainer):
                 spec = torch.randn_like(condition)
                 temp = spec  # for draw
                 N = batch_label.shape[0]  # Batch size
-                for n in range(len(alpha) - 1, -1, -1):
+                for n in tqdm(range(len(alpha) - 1, -1, -1)):
                     t = torch.tensor([T[n]], device=spec.device).repeat(N)
                     out = self.model_ddpm(spec, condition, t)
 
@@ -321,12 +322,24 @@ class VBDDPMTrainer(BasicTrainer):
                     if n > 0:  # + random noise
                         noise = torch.randn_like(spec)
                         spec += sigmas[n] * noise
+
+                        # add condition guidance
+                        if self.opt.c_guidance:
+                            noise_scale = torch.Tensor([alpha_cum[n]]).unsqueeze(1).unsqueeze(2).unsqueeze(3).cuda()  # alpha_bar_t [N, 1, 1, 1]
+                            noise_scale_sqrt = noise_scale ** 0.5  # sqrt(alpha_bar_t) [N, 1, 1, 1]
+                            noise = torch.randn_like(condition).cuda()  # epsilon           [N, 2, T, F]
+                            noisy_condition = noise_scale_sqrt * condition + (1.0 - noise_scale) ** 0.5 * noise  # c_t
+                            spec = 0.5 * spec + 0.5 * noisy_condition
+
                     # spec = torch.clamp(spec, -1, 1)
+                if self.opt.refine:
+                    spec = self.c_gen(spec)['est_comp']
 
                 '''run code in below can draw the difference between initial gaussian, condition (noisy), generated, and ground truth'''
 
                 # spec = self.data_reconstuct(spec)
                 # condition = self.data_reconstuct(condition)
+
                 f, axs = plt.subplots(2, 4, figsize=(16, 6))
 
                 axs[0, 0].imshow(temp[0, 0, :, :].cpu().numpy())
@@ -355,7 +368,7 @@ class VBDDPMTrainer(BasicTrainer):
                 axs[1, 3].imshow(batch_label[0, 1, :, :].cpu().numpy())
                 axs[1, 3].set_title('l_imag.png')
                 axs[1, 3].axis('off')
-                plt.savefig('asset/data/sample_diffusec.jpg', dpi=300, bbox_inches='tight')
+                plt.savefig(f'asset/data/sample_{self.model_ddpm.__class__.__name__}.jpg', dpi=300, bbox_inches='tight')
                 exit()
 
                 '''run code in above can draw the difference between initial gaussian, condition (noisy), generated, and ground truth'''

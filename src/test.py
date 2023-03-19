@@ -49,9 +49,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=2023, help='manual seed')
 
-    parser.add_argument('--model', type=str, default="Base", help='Base/DiffuSE')
+    parser.add_argument('--model', type=str, default="Base", help='Base')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--n_epoch', type=int, default=50, help='number of epoch')
+    parser.add_argument('--n_epoch', type=int, default=30, help='number of epoch')
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=12)
     parser.add_argument("--weight_decay", type=float, default=1e-7, help="weight decay")
