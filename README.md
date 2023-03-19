@@ -171,9 +171,11 @@ python src/test_ddpm.py --model DiffuSE --c_gen --c_guidance --fast_sampling --r
 ```
 
 Comparison of different generative models on VoiceBank-DEMAND dataset:
+
 <img src="asset/data/overall-voicebank.png" alt="Ablation study" align=center />
 
 Trained on Voicebank, tested on CHIME-4:
+
 <img src="asset/data/overall-chime.png" width = "60%" height = "35%" alt="Ablation study" align=center />
 
 
