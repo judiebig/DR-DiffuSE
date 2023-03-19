@@ -4,7 +4,7 @@
 ## Brief
 This is the implementation of **DR-DiffuSE** (Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement) by **PyTorch**. 
 
-[Paper]() 
+[Paper](/asset/data/DR-DiffuSE.pdf) 
 
 In this work, we elicit generative-based speech enhancement methods (e.g., DDPM-based --) by discussing the problem of poor generalization of existing approaches. Despite the significant performance improvements in other domains like audio speech synthesis and image-to-image translation, the performance of DDPM-based speech enhancement methods is generally lower than that of other generative speech enhancement models. We investigate the following drawbacks: (i) condition collapse problem; (ii) trade-offs between effectiveness and efficiency. 
 
@@ -16,7 +16,7 @@ We give a deep-insight analysis of why condition collapse happens in speech enha
 **★★★ Still working in progress ★★★**
 Since the NSFC application is concentrated in March, these days are relatively busy... -->
 
-### Environment Requirements
+## Environment Requirements
 We run the code on a computer with 2 * RTX-3090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
 
 ```
@@ -40,11 +40,11 @@ pip install wandb
 pip install rich
 ```
 
-### Basic Architecture
+## Basic Architecture
 
 We use a UNet-type model from our previous work [Foster Strengths and Circumvent Weaknesses: a Speech Enhancement Framework with Two-branch Collaborative Learning](https://arxiv.org/pdf/2110.05713.pdf) as the basic architecture for speech enhancement. We give the implementation of our basic model in ``src/model/Base.py``, which will be used as the condition generator and also, the refinement network.
 
-### Condition Collapse Problem
+## Condition Collapse Problem
 
 To show the condition collapse phenomenon in speech enhancment, we design a model in ``src/model/DiffuSEC.py``, similar to the condition-ddpm method in **Image Super-Resolution via Iterative Refinement(SR3)** and **Palette-Image-to-Image-Diffusion-Models**. 
 
@@ -66,7 +66,7 @@ We show the difference between the initial gaussian, condition (noisy), generate
 
 where ``n`` denotes noise, ``c`` denotes condition, ``g`` denotes generated, and ``l`` denotes label (the compressed spec, see ``src/ddpm_trainer.py`` for more details). We can see that correlations between the generated spectrogram and the condition one is weak.
 
-### Our solution -- DR-DiffuSE (work in progress)
+## Our solution -- DR-DiffuSE
 
 **Workflow of DR-DiffuSE:**
 
@@ -157,7 +157,7 @@ As known, *classifier guidance* has a tight connection with the condition signal
 
 ---
 
-**<font color=blue>Denoise and Refine</font>**
+**<font color=green>Denoise and Refine</font>**
 
 Rather than making a trade-off between efficiency and accuracy, we propose a **denoise** and **refine** framework -- **DR-DiffuSE** -- first generate unperfect candidate, then refine it with a refinement network. We reuse the auxiliary condition generator as the refinement network, so that we can obtain a more robust condition generator.
 
@@ -177,7 +177,7 @@ Trained on Voicebank, tested on CHIME-4:
 <img src="asset/data/overall-chime.png" width = "60%" height = "35%" alt="Ablation study" align=center />
 
 
-### Acknowledgments
+## Acknowledgments
 We would like to thank the authors of previous related projects for generously sharing their code and insights:
 - [Denoising Diffusion Probabilistic Models](https://github.com/hojonathanho/diffusion)
 - [DiffWave: A Versatile Diffusion Model for Audio Synthesis](https://github.com/lmnt-com/diffwave)
@@ -187,7 +187,7 @@ We would like to thank the authors of previous related projects for generously s
 
 **Special thanks to Yen-Ju Lu for his kind help!**
 
-### References
+## References
 If you find the code useful for your research, please consider citing
 
 ```
@@ -199,7 +199,7 @@ If you find the code useful for your research, please consider citing
 }
 ```
 
-### Extensions
+## Extensions
 Note that there are some recent papers that also address the condition collapse problem, we list them here for the convenience of readers.
 
 - [Blended Diffusion for Text-driven Editing of Natural Images](https://arxiv.org/abs/2111.14818)
