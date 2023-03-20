@@ -187,7 +187,7 @@ We would like to thank the authors of previous related projects for generously s
 - [Conditional Diffusion Probabilistic Model for Speech Enhancement](https://github.com/neillu23/CDiffuSE)
 - [A Study on Speech Enhancement Based on Diffusion Probabilistic Model](https://github.com/neillu23/DiffuSE)
 
-**Special thanks to Yen-Ju Lu for his kind help!**
+**Special thanks to [Yen-Ju Lu](https://github.com/neillu23) for his kind help!**
 
 ## References
 If you find the code useful for your research, please consider citing
