@@ -163,7 +163,7 @@ Rather than making a trade-off between efficiency and accuracy, we propose a **d
 
 We have two options for algorithm design: (i) first pre-train the auxiliary condition generator (``src/train.py``), next train ddpm (``src/train_ddpm.py``), then load pre-trained models and fine-tune them jointly. (ii) first pre-train the auxiliary condition generator (``src/train.py``), next train ddpm (``src/train_ddpm.py``) and use it to generate adversarial samples. Then, we use these adversarial samples and original datasets to fine-tune the auxiliary condition generator (``src/train.py``) with _com_mag_mse_loss_ (``src/loss.py``).
 
-**Due to the memory issue -- for the first one, we need to restore at least 6 steps gradients of DDPM -- cut down the batchsize to avoid OOM. Thus, we use the second one in this work.**
+**Due to the memory issue -- for the first one, we need to restore at least 6 steps gradients of DDPM -- we need to cut down the batchsize to avoid OOM. Thus, we use the second one in this work.**
 
 For inference, we run:
 ```
@@ -202,7 +202,7 @@ If you find the code useful for your research, please consider citing
 ```
 
 ## Extensions
-Note that there are some recent papers that also address the condition collapse problem, we list them here for the convenience of readers.
+Note that there are some recent papers also address the condition collapse problem, we list them here for the convenience of readers.
 
 - [Blended Diffusion for Text-driven Editing of Natural Images](https://arxiv.org/abs/2111.14818)
 - [Discrete Contrastive Diffusion for Cross-Modal Music and Image Generation](https://arxiv.org/abs/2206.07771)
