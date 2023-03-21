@@ -17,7 +17,7 @@ We give a deep-insight analysis of why condition collapse happens in speech enha
 Since the NSFC application is concentrated in March, these days are relatively busy... -->
 
 ## Environment Requirements
-We run the code on a computer with 2 * RTX-3090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
+We run the code on a computer with RTX-3090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
 
 ```
 # create virtual environment
@@ -109,7 +109,7 @@ Again, we show the difference between the initial gaussian, condition (processed
 
 ![Condition ](asset/data/DIffuSEC-C-sample.jpg)
 
-This version is slightly better compared to the vanilla one (pay attention to the color of the generated image, at least with the same background color in this version), but still lose fine-grained details.
+This version is slightly better compared to the vanilla one (pay attention to the color of the generated image, at least with the more similar background color in this version), but still lose fine-grained details.
 
 **<font color=green>Dual-path Parallel Network Architecture</font>**
 Given the loss curves above, we want to design a more fine-grained architecture for condition delivery.
