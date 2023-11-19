@@ -1,5 +1,10 @@
 # DR-DiffuSE
 
+Update 11.19: In our recent work "DOSE: Diffusion Dropout with Adaptive Prior for Speech Enhancement, NeurIPS, 2023", we revisited why condition collapse happens -- (1) error accumulation (by finite iterative steps (mathematical) and learning errors (sample & true errors)), (2) non-dominent position of condition factor. We find the condition factor does help x_t recover x_0. Please read our recent work for more details.
+
+We found that the neural network architecture also affects the participation of conditional factors - an unreasonable neural network architecture may mislead and affect the conclusions (see the preliminary section in DOSE). Since in this work, we first use a compression operation to compress x_t and c along the channel dimension, we are concerned whether it will have a significant impact on the results -- we claimed we follow the SR3 setup, but in practice we just use compression operation (at the beginning). For the rigor of our conclusions, we decide to retest our approach and also investigate whether ddpm can be used as a data augmentation strategy for regression problems. Please give us some time to figure out the above. If you have any problems, feel free to contact us (wxtai AT outlook.com).
+
+
 ---
 ## Brief
 This is the implementation of **DR-DiffuSE** (Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement) by **PyTorch**. 
