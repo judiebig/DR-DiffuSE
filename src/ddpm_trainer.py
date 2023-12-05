@@ -78,9 +78,17 @@ class VBDDPMTrainer(BasicTrainer):
         # load conditon generator
         if opt.c_gen:
             self.c_gen = Base()
-            checkpoint = torch.load("./asset/selected_model/base_model_pesq_312.pth")
+            checkpoint = torch.load("./asset/selected_model/c_gen.pth")
             self.c_gen.load_state_dict(checkpoint['model_state_dict'])
             self.c_gen.to(opt.device)
+            self.c_gen.eval()  # newly add 11.20
+
+        if opt.refine:
+            self.refiner = Base()
+            checkpoint = torch.load("./asset/selected_model/refiner.pth")
+            self.refiner.load_state_dict(checkpoint['model_state_dict'])
+            self.refiner.to(opt.device)
+            self.refiner.eval()
 
     def inference_schedule(self, fast_sampling=False):
         """
@@ -134,24 +142,23 @@ class VBDDPMTrainer(BasicTrainer):
                 torch.norm(batch_label, dim=1)) ** 0.3
         elif self.opt.feat_type == 'log_1x':
             batch_feat, batch_label = torch.log(torch.norm(batch_feat, dim=1) + 1), \
-                                      torch.log(torch.norm(batch_label, dim=1) + 1)
+                torch.log(torch.norm(batch_label, dim=1) + 1)
         if self.opt.feat_type in ['normal', 'sqrt', 'cubic', 'log_1x']:
             batch_feat = torch.stack((batch_feat * torch.cos(noisy_phase), batch_feat * torch.sin(noisy_phase)),
                                      dim=1)
             batch_label = torch.stack((batch_label * torch.cos(clean_phase), batch_label * torch.sin(clean_phase)),
                                       dim=1)
         return batch_feat, batch_label
-    
+
     def data_reconstuct(self, x_complex, feat_type='sqrt'):
         x_mag, x_phase = torch.norm(x_complex, dim=1), torch.atan2(x_complex[:, -1, :, :], x_complex[:, 0, :, :])
-
 
         if self.opt.feat_type == 'sqrt':
             x_mag = x_mag ** 2
             x_com = torch.stack((x_mag * torch.cos(x_phase), x_mag * torch.sin(x_phase)), dim=1)
         else:
             pass
-            # unfinished 
+            # unfinished
 
         return x_com
 
@@ -166,8 +173,8 @@ class VBDDPMTrainer(BasicTrainer):
         noisy_audio = noise_scale_sqrt * (batch_label) + (1.0 - noise_scale) ** 0.5 * noise
 
         if self.opt.c_gen:
-            # with torch.no_grad():
-            condition = self.c_gen(batch_feat)['est_comp']
+            with torch.no_grad():
+                condition = self.c_gen(batch_feat)['est_comp']
         else:
             condition = batch_feat
 
@@ -263,7 +270,6 @@ class VBDDPMTrainer(BasicTrainer):
     @torch.no_grad()
     def inference_(self):
         loss_list = []
-        # csig_list, cbak_list, covl_list, pesq_list, ssnr_list, stoi_list = [], [], [], [], [], []
         batch_valid = self.progress.add_task(f"[green]validating...", total=len(self.valid_loader))
         for batch in self.valid_loader:
             # cuda
@@ -279,7 +285,7 @@ class VBDDPMTrainer(BasicTrainer):
         test_loss = np.mean(loss_list)
         if self.opt.wandb:
             wandb.log({
-                    'test_loss': test_loss
+                'test_loss': test_loss
             })
         else:
             self.logger.info({
@@ -304,15 +310,33 @@ class VBDDPMTrainer(BasicTrainer):
                 # discard run_step function
                 batch_feat, batch_label = self.data_compress(batch)
                 if self.opt.c_gen:
-                    # with torch.no_grad():
                     condition = self.c_gen(batch_feat)['est_comp']
                 else:
                     condition = batch_feat
-                # condition = batch_feat
-                spec = torch.randn_like(condition)
+                # spec = torch.randn_like(condition)
+
+                # '''dr_diffuse_new: change spec from gaussian to y_T (start)'''
+                # noise_scale = self.noise_level[-1]
+                # noise_scale_sqrt = noise_scale ** 0.5  # sqrt(alpha_bar_t) [N, 1, 1, 1]
+                # noise = torch.randn_like(batch_feat)  # epsilon           [N, 2, T, F]
+                # # y_T = noise_scale_sqrt * (batch_feat) + (1.0 - noise_scale) ** 0.5 * noise
+                # # spec = y_T
+                # c_T = noise_scale_sqrt * (condition) + (1.0 - noise_scale) ** 0.5 * noise
+                # spec = c_T
+                # '''dr_diffuse_new: change spec from gaussian to y_T (end)'''
+
+                '''dr_diffuse_new: change spec from gaussian to c_T (start, consider fast-sampling)'''
+                noise_scale = alpha_cum[-1]
+                noise_scale_sqrt = noise_scale ** 0.5  # sqrt(alpha_bar_t) [N, 1, 1, 1]
+                noise = torch.randn_like(batch_feat)  # epsilon           [N, 2, T, F]
+                c_T = noise_scale_sqrt * (condition) + (1.0 - noise_scale) ** 0.5 * noise
+                spec = c_T
+                '''dr_diffuse_new: change spec from gaussian to c_T (end, consider fast-sampling)'''
+
                 temp = spec  # for draw
-                N = batch_label.shape[0]  # Batch size
+                N = batch_label.shape[0]  # batch size
                 for n in tqdm(range(len(alpha) - 1, -1, -1)):
+
                     t = torch.tensor([T[n]], device=spec.device).repeat(N)
                     out = self.model_ddpm(spec, condition, t)
 
@@ -325,51 +349,50 @@ class VBDDPMTrainer(BasicTrainer):
 
                         # add condition guidance
                         if self.opt.c_guidance:
-                            noise_scale = torch.Tensor([alpha_cum[n]]).unsqueeze(1).unsqueeze(2).unsqueeze(3).cuda()  # alpha_bar_t [N, 1, 1, 1]
+                            noise_scale = torch.Tensor([alpha_cum[n]]).unsqueeze(1).unsqueeze(2).unsqueeze(
+                                3).cuda()  # alpha_bar_t [N, 1, 1, 1]
                             noise_scale_sqrt = noise_scale ** 0.5  # sqrt(alpha_bar_t) [N, 1, 1, 1]
                             noise = torch.randn_like(condition).cuda()  # epsilon           [N, 2, T, F]
                             noisy_condition = noise_scale_sqrt * condition + (1.0 - noise_scale) ** 0.5 * noise  # c_t
                             spec = 0.5 * spec + 0.5 * noisy_condition
-
-                    # spec = torch.clamp(spec, -1, 1)
                 if self.opt.refine:
-                    spec = self.c_gen(spec)['est_comp']
+                    spec = 0.5 * spec + 0.5 * batch_feat
+                    spec = self.refiner(spec)['est_comp']
 
                 '''run code in below can draw the difference between initial gaussian, condition (noisy), generated, and ground truth'''
 
-                # spec = self.data_reconstuct(spec)
-                # condition = self.data_reconstuct(condition)
+                # # spec = self.data_reconstuct(spec)
+                # # condition = self.data_reconstuct(condition)
 
-                f, axs = plt.subplots(2, 4, figsize=(16, 6))
-
-                axs[0, 0].imshow(temp[0, 0, :, :].cpu().numpy())
-                axs[0, 0].set_title('n_real.png')
-                axs[0, 0].axis('off')
-                axs[0, 1].imshow(temp[0, 1, :, :].cpu().numpy())
-                axs[0, 1].set_title('n_imag.png')
-                axs[0, 1].axis('off')
-                axs[0, 2].imshow(condition[0, 0, :, :].cpu().numpy())
-                axs[0, 2].set_title('c_real.png')
-                axs[0, 2].axis('off')
-                axs[0, 3].imshow(condition[0, 1, :, :].cpu().numpy())
-                axs[0, 3].set_title('c_imag.png')
-                axs[0, 3].axis('off')
-
-
-                axs[1, 0].imshow(spec[0, 0, :, :].cpu().numpy())
-                axs[1, 0].set_title('g_real.png')
-                axs[1, 0].axis('off')
-                axs[1, 1].imshow(spec[0, 1, :, :].cpu().numpy())
-                axs[1, 1].set_title('g_imag.png')
-                axs[1, 1].axis('off')
-                axs[1, 2].imshow(batch_label[0, 0, :, :].cpu().numpy())
-                axs[1, 2].set_title('l_real.png')
-                axs[1, 2].axis('off')
-                axs[1, 3].imshow(batch_label[0, 1, :, :].cpu().numpy())
-                axs[1, 3].set_title('l_imag.png')
-                axs[1, 3].axis('off')
-                plt.savefig(f'asset/data/sample_{self.model_ddpm.__class__.__name__}.jpg', dpi=300, bbox_inches='tight')
-                exit()
+                # f, axs = plt.subplots(2, 4, figsize=(16, 6))
+                #
+                # axs[0, 0].imshow(temp[0, 0, :, :].cpu().numpy())
+                # axs[0, 0].set_title('n_real.png')
+                # axs[0, 0].axis('off')
+                # axs[0, 1].imshow(temp[0, 1, :, :].cpu().numpy())
+                # axs[0, 1].set_title('n_imag.png')
+                # axs[0, 1].axis('off')
+                # axs[0, 2].imshow(condition[0, 0, :, :].cpu().numpy())
+                # axs[0, 2].set_title('c_real.png')
+                # axs[0, 2].axis('off')
+                # axs[0, 3].imshow(condition[0, 1, :, :].cpu().numpy())
+                # axs[0, 3].set_title('c_imag.png')
+                # axs[0, 3].axis('off')
+                #
+                # axs[1, 0].imshow(spec[0, 0, :, :].cpu().numpy())
+                # axs[1, 0].set_title('g_real.png')
+                # axs[1, 0].axis('off')
+                # axs[1, 1].imshow(spec[0, 1, :, :].cpu().numpy())
+                # axs[1, 1].set_title('g_imag.png')
+                # axs[1, 1].axis('off')
+                # axs[1, 2].imshow(batch_label[0, 0, :, :].cpu().numpy())
+                # axs[1, 2].set_title('l_real.png')
+                # axs[1, 2].axis('off')
+                # axs[1, 3].imshow(batch_label[0, 1, :, :].cpu().numpy())
+                # axs[1, 3].set_title('l_imag.png')
+                # axs[1, 3].axis('off')
+                # plt.savefig(f'asset/data/sample_{self.model_ddpm.__class__.__name__}.jpg', dpi=300, bbox_inches='tight')
+                # exit()
 
                 '''run code in above can draw the difference between initial gaussian, condition (noisy), generated, and ground truth'''
 

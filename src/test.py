@@ -5,7 +5,8 @@ import random
 import argparse
 from rich.console import Console
 from model import *
-from trainer import *
+from utils import *
+from ddpm_trainer import *
 
 
 def main(opt):
@@ -14,8 +15,8 @@ def main(opt):
         torch.manual_seed(opt.seed)
 
     '''logger'''
-    # logger = get_logger(f'./asset/log/{opt.model}.log')
-    # logger.info(opt)
+    logger = get_logger(f'./asset/log/{opt.model}.log')
+    logger.info(opt)
 
     console = Console(color_system='256', style=None)
 
@@ -25,33 +26,49 @@ def main(opt):
         './data/voicebank/clean_trainset_wav',
         'train',
         opt)
+
     cv_data = VBDataset(
         './data/voicebank/noisy_testset_wav',
         './data/voicebank/clean_testset_wav',
         'valid',
         opt)
 
+    # cv_data = VBDataset(
+    #     './data/chime4/noisy',
+    #     './data/chime4/clean',
+    #     'valid',
+    #     opt)
+
     console.print(f'evaluation: total {cv_data.__len__()} eval data.')
 
     '''load model'''
-    model = eval(opt.model)()
-    checkpoint = torch.load("./asset/selected_model/base_model_pesq_312.pth")
+    opt.params = AttrDict(
+        ours=False,
+        fast_sampling=opt.fast_sampling,
+        noise_schedule=np.linspace(1e-4, 0.05, 200).tolist(),
+        inference_noise_schedule=[0.0001, 0.001, 0.01, 0.05, 0.2, 0.35],
+    )
+
+    model = eval(opt.model)(opt.params)
+    checkpoint = torch.load(f"./asset/model/ddpm.pth")
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(args.device)
-
+    model.eval()
     '''load trainer'''
-    trainer = VBTrainer(tr_data, cv_data, model, console, opt)
-    trainer.inference()
+    trainer = VBDDPMTrainer(tr_data, cv_data, model, console, logger,  opt)
+    trainer.inference_ddpm()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--seed', type=int, default=2023, help='manual seed')
-
-    parser.add_argument('--model', type=str, default="Base", help='Base')
+    parser.add_argument('--c_gen', action='store_true', help='choose to use condition generated from condition generator')
+    parser.add_argument('--c_guidance', action='store_true', help='choose to use explicit condition guidance during inference')
+    parser.add_argument('--refine', action='store_true', help='choose to refine spectrogram after ddpm inference')
+    parser.add_argument('--model', type=str, default="DiffuSEC", help='Base/DiffuSEC/DiffuSE/...')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate')
-    parser.add_argument('--n_epoch', type=int, default=30, help='number of epoch')
+    parser.add_argument('--n_epoch', type=int, default=50, help='number of epoch')
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--num_workers', type=int, default=12)
     parser.add_argument("--weight_decay", type=float, default=1e-7, help="weight decay")
@@ -65,6 +82,8 @@ if __name__ == '__main__':
     parser.add_argument('--feat_type', type=str, default='sqrt', help='normal/sqrt/cubic/log_1x')
 
     parser.add_argument('--wandb', action='store_true', help='load wandb or not')
+
+    parser.add_argument('--fast_sampling', action='store_true', help='')
 
     args = parser.parse_args()
     args.device = torch.device('cuda:0')

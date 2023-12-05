@@ -1,11 +1,29 @@
 # DR-DiffuSE
 
-Update 11.19: In our recent work "DOSE: Diffusion Dropout with Adaptive Prior for Speech Enhancement, NeurIPS, 2023", we revisited why condition collapse happens -- (1) error accumulation (by finite iterative steps (mathematical) and learning errors (sample & true errors)), (2) non-dominent position of condition factor. We find the condition factor does help x_t recover x_0. Please read our recent work for more details.
+**Update 12.5:**
 
-We found that the neural network architecture also affects the participation of conditional factors - an unreasonable neural network architecture may mislead and affect the conclusions (see the preliminary section in DOSE). Since in this work, we first use a compression operation to compress x_t and c along the channel dimension, we are concerned whether it will have a significant impact on the results -- we claimed we follow the SR3 setup, but in practice we just use compression operation (at the beginning). For the rigor of our conclusions, we decide to retest our approach and also investigate whether ddpm can be used as a data augmentation strategy for regression problems. Please give us some time to figure out the above. If you have any problems, feel free to contact us (wxtai AT outlook.com).
-
+In our recent work "DOSE: Diffusion Dropout with Adaptive Prior for Speech Enhancement, NeurIPS, 2023", we revisited why condition collapse happens -- (1) error accumulation (by finite iterative steps (mathematical) and learning errors (sample & true errors)), (2) non-dominent position of condition factor. We find the condition factor does help x_t recover x_0. Please read our recent work for more details.
 
 ---
+
+We also investigate DR-DiffuSE to verify whether some conclusions from DOSE are correct. 
+
+The core difference between current version and previous one is that we make one modification: 
+
+(1) line 328-334 in src/ddpm_trainer.py -- due to the amplitude of spectrom is high, we should start from c_t/y_t, rather than pure Gaussian noise.
+
+Based on this small modification, we conclude that: 
+
+(1) Our variants, c_gen + two-branch version > c_gen concatenation version > y concatenation version (can be observed from both training losses and inference performance)
+
+(2) Even without explicit guidance, diffusion models (concatenation version, two-branch version) with 6 steps have denoising ability, but their performances are worse than that of the deterministic model.
+
+(3) Error accumulation issue exists (align with the claim in DOSE), 6 steps performs better than 200 steps under the no-guidance scenario.
+
+(4) Using a diffusion model to generate augmented data does improve generalization (a little bit).
+
+---
+
 ## Brief
 This is the implementation of **DR-DiffuSE** (Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement) by **PyTorch**. 
 
@@ -22,7 +40,7 @@ We give a deep-insight analysis of why condition collapse happens in speech enha
 Since the NSFC application is concentrated in March, these days are relatively busy... -->
 
 ## Environment Requirements
-We run the code on a computer with RTX-3090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
+We run the code on a computer with RTX-4090, i7 13700KF, and 128G memory. Install the dependencies via anaconda:
 
 ```
 # create virtual environment
@@ -49,139 +67,59 @@ pip install rich
 
 We use a UNet-type model from our previous work [Foster Strengths and Circumvent Weaknesses: a Speech Enhancement Framework with Two-branch Collaborative Learning](https://arxiv.org/pdf/2110.05713.pdf) as the basic architecture for speech enhancement. We give the implementation of our basic model in ``src/model/Base.py``, which will be used as the condition generator and also, the refinement network.
 
-## Condition Collapse Problem
 
-To show the condition collapse phenomenon in speech enhancment, we design a model in ``src/model/DiffuSEC.py``, similar to the condition-ddpm method in **Image Super-Resolution via Iterative Refinement(SR3)** and **Palette-Image-to-Image-Diffusion-Models**. 
+## Training Details
 
-We train the model via running:
-```
-python src/train_ddpm.py --model DiffuSEC --lr 0.0002 --wandb
-```
-After training, we run:
-```
-python src/test_ddpm.py --model DiffuSEC --batch_size 1
-```
-Note that we save the checkpoint per epoch and automatically select the best model for evaluation, you can manually modify the path of the pre-trained model (see ``src/test_ddpm.py`` and ``src/ddpm_trainer.py``).
+(1) Train Base (condition generator, c_gen) model. Open terminal and run:
 
-<img src="asset/data/DiffuSEC-monitor.png" alt="DiffuSEC-monitor" align=center />
+> python src/train.py
 
-We show the difference between the initial gaussian, condition (noisy), generated, and ground truth:
+(2) Train DDPM model. Open terminal and run:
 
-![Condition Collapse](asset/data/DiffuSEC-sample.jpg)
+for DiffuSEC:
 
-where ``n`` denotes noise, ``c`` denotes condition, ``g`` denotes generated, and ``l`` denotes label (the compressed spec, see ``src/ddpm_trainer.py`` for more details). We can see that correlations between the generated spectrogram and the condition one is weak.
+> python src/train_ddpm.py --model DiffuSEC --wandb
 
-## Our solution -- DR-DiffuSE
+for DiffuSEC + condition generator:
 
-**Workflow of DR-DiffuSE:**
+> python src/train_ddpm.py --model DiffuSEC --c_gen --wandb
 
-<img src="asset/data/DR-DiffuSE-workflow.png" width = "50%" height = "35%" alt="DR-DiffuSE-workflow" align=center />
+for DiffuSE + condition generator:
 
-**3 condition injecting strategies**:
-- Auxiliary condition generator
-- Dual-path parallel network architecture
-- Non-parameterized condition guidance
+> python src/train_ddpm.py --model DiffuSE --c_gen --wandb
 
-**fast sampling + refine**:
-- Reduce the step from ~1000 to several steps
-- Design a refinement network to (i) calibrate, and (ii) improve generalization
+for refiner
 
-**Architecture of DR-DiffuSE:**
+> python src/joint_finetune.py --fast_sampling --from_base --wandb 
 
-<img src="asset/data/DR-DiffuSE-arc.png" alt="DR-DiffuSE-arc" align=center />
+(3) Inference
 
-**<font color=green>Auxiliary Condition Generator</font>**
-The first strategy for the condition collapse problem is to design an auxiliary condition generator to get a better condition signal.
+> python src/test_ddpm.py --model DiffuSE --fast_sampling --c_gen --c_guidance --refine
 
-To achieve this, we first use `src/model/Base.py` as an auxiliary condition generator and train it for 10~30 epochs:
-```
-python src/train.py --lr 0.001 --n_epoch 30 --wandb
-```
-Then we train the ddpm model via running:
-```
-python src/train_ddpm.py --model DiffuSEC --c_gen --lr 0.0002 --wandb
-```
 
-<img src="asset/data/DiffuSEC-C-monitor.png" alt="DiffuSEC-C-monitor" align=center />
+## Performance
 
-We can see that two (test) loss curves have similar trend, and the one with better condition signal also perform better (we early-stop the training because we can forecast the trend for the next few epochs). 
+**Voicebank**
 
-After training, we run:
-```
-python src/test_ddpm.py --model DiffuSEC --c_gen --batch_size 1
-```
-Again, we show the difference between the initial gaussian, condition (processed), generated, and ground truth:
+*Base*
 
-![Condition ](asset/data/DIffuSEC-C-sample.jpg)
+{'test_mean_csig': 4.390326794116049, 'test_mean_cbak': 3.5873292531912213, 'test_mean_covl': 3.7635391559208635, 'test_mean_pesq': 3.0882322788238525, 'test_mean_ssnr': 9.794663913082164, 
+'test_mean_stoi': 0.9484222835928453}
 
-This version is slightly better compared to the vanilla one (pay attention to the color of the generated image, at least with the more similar background color in this version), but still lose fine-grained details.
+*DR-DiffuSE*
 
-**<font color=green>Dual-path Parallel Network Architecture</font>**
-Given the loss curves above, we want to design a more fine-grained architecture for condition delivery.
+{'test_mean_csig': 4.376428482730735, 'test_mean_cbak': 3.5494795946836346, 'test_mean_covl': 3.742056515878191, 'test_mean_pesq': 3.063969696465048, 'test_mean_ssnr': 9.38235410664146, 'test_mean_stoi': 0.9491473422523825}
 
-We train the model via running:
-```
-python src/train_ddpm.py --model DiffuSE --c_gen --lr 0.0002 --wandb
-```
-<img src="asset/data/DiffuSE-C-monitor.png" alt="DiffuSE-C-monitor" align=center />
+**CHIME-4**
 
-And we show the difference between the initial gaussian, condition (processed), generated, and ground truth:
+*Base*
 
-![Condition ](asset/data/DIffuSE-C-sample.jpg)
+{'test_mean_csig': 3.0838875300415776, 'test_mean_cbak': 2.627851942026347, 'test_mean_covl': 2.443433905192998, 'test_mean_pesq': 1.8535393489129615, 'test_mean_ssnr': 5.32511011519281, 
+'test_mean_stoi': 0.9197356345337052}
 
-This version again, is slightly better than previous ones. However, after we calculate several metrics (e.g., pesq, stoi, ssnr, etc), we find that the condition collapse problem still exists.
+*DR-DiffuSE*
 
-**<font color=green>Non-parameterized Condition Guidance</font>**
-We provide additional non-parameterized guidance during the reverse process by interpolating diffusing condition features with the intermediate output of DDPM.
-
-$\tilde{\boldsymbol{X}}^{t}=\mathcal{N}(\boldsymbol{\mu}-2\zeta\boldsymbol{\Sigma}(\tilde{\boldsymbol{X}}^{t} - \boldsymbol{C}^t),\boldsymbol{\Sigma})$
-
-We generate samples via:
-```
-python src/test_ddpm.py --model DiffuSE --c_gen --c_guidance --batch_size 1
-```
-
-![Condition ](asset/data/DiffuSE-C-CG-sample.jpg)
-
-We can see that the generated image is almost similar with condition signals (200 steps). We apply the fast sampling technique:
-```
-python src/test_ddpm.py --model DiffuSE --c_gen --c_guidance --fast_sampling --batch_size 1
-```
-![Condition ](asset/data/DiffuSE-C-CG-fast-sample.jpg)
-
-As shown, we can generate high quality spectrogram even with 6 steps!
-
---- 
-
-**<font color=red>Effciency vs. Accuracy</font>**
-In this work, we follow the previous work and set T to 200. If we want to generate a sample, we need to run model iteratively (200 times), which is time-consuming. To this end, previous works propose fast sampling, generating samples with only several steps (~6 steps). However, it means we must sacrifice some performance to accelerate inference process. We show a sample here with fast sampling technique (~6 steps):
-<img src="asset/data/abaltion-study-refine.png" width = "60%" height = "35%" alt="Ablation study" align=center />
-
-**<font color=red>Generalizability</font>**
-As known, *classifier guidance* has a tight connection with the condition signal. Thus, when the auxiliary condition generator fails to generate qualified condition representation, the performance of conditional DDPM will significantly drop.
-
----
-
-**<font color=green>Denoise and Refine</font>**
-
-Rather than making a trade-off between efficiency and accuracy, we propose a **denoise** and **refine** framework -- **DR-DiffuSE** -- first generate unperfect candidate, then refine it with a refinement network. We reuse the auxiliary condition generator as the refinement network, so that we can obtain a more robust condition generator.
-
-We have two options for algorithm design: (i) first pre-train the auxiliary condition generator (``src/train.py``), next train ddpm (``src/train_ddpm.py``), then load pre-trained models and fine-tune them jointly. (ii) first pre-train the auxiliary condition generator (``src/train.py``), next train ddpm (``src/train_ddpm.py``) and use it to generate adversarial samples. Then, we use these adversarial samples and original datasets to fine-tune the auxiliary condition generator (``src/train.py``) with _com_mag_mse_loss_ (``src/loss.py``).
-
-**Due to the memory issue -- for the first one, we need to restore at least 6 steps gradients of DDPM -- we need to cut down the batchsize to avoid OOM. Thus, we use the second one in this work.**
-
-For inference, we run:
-```
-python src/test_ddpm.py --model DiffuSE --c_gen --c_guidance --fast_sampling --refine --batch_size 1
-```
-
-Comparison of different generative models on VoiceBank-DEMAND dataset:
-
-<img src="asset/data/overall-voicebank.png" alt="Ablation study" align=center />
-
-Trained on Voicebank, tested on CHIME-4:
-
-<img src="asset/data/overall-chime.png" width = "60%" height = "35%" alt="Ablation study" align=center />
+{'test_mean_csig': 3.1085706859198368, 'test_mean_cbak': 2.6527395251714823, 'test_mean_covl': 2.47250678702117, 'test_mean_pesq': 1.881716514988379, 'test_mean_ssnr': 5.3934482878713395, 'test_mean_stoi': 0.9234147534103554}
 
 
 ## Acknowledgments
@@ -191,6 +129,7 @@ We would like to thank the authors of previous related projects for generously s
 - [Foster Strengths and Circumvent Weaknesses: a Speech Enhancement Framework with Two-branch Collaborative Learning](https://github.com/judiebig/Foster-Strengths-and-Circumvent-Weaknesses)
 - [Conditional Diffusion Probabilistic Model for Speech Enhancement](https://github.com/neillu23/CDiffuSE)
 - [A Study on Speech Enhancement Based on Diffusion Probabilistic Model](https://github.com/neillu23/DiffuSE)
+- [Speech Enhancement with Score-Based Generative Models in the Complex STFT Domain](https://arxiv.org/abs/2203.17004)
 
 **Special thanks to [Yen-Ju Lu](https://github.com/neillu23) for his kind help!**
 

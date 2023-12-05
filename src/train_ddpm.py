@@ -15,14 +15,17 @@ def main(opt):
         random.seed(opt.seed)
         torch.manual_seed(opt.seed)
 
+    if not os.path.exists('./asset/log/'):
+        os.mkdir('./asset/log/')
+
     '''logger'''
     logger = get_logger(f'./asset/log/{opt.model}.log')
     logger.info(opt)
 
     console = Console(color_system='256', style=None)
     if opt.wandb:
-        # wandb.init(project="dr_diffuse")
-        wandb.init(project="dr_diffuse", settings=wandb.Settings(start_method="fork"))
+        wandb.init(project="dr_diffuse")
+        # wandb.init(project="dr_diffuse_new", settings=wandb.Settings(start_method="fork"))
     else:
         console.print("wandb forbidden!")
 
@@ -59,7 +62,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--seed', type=int, default=2023, help='manual seed')
 
-    parser.add_argument('--model', type=str, default="DiffuSEC", help='Base/DiffuSEC/DiffuSE/...')
+    parser.add_argument('--model', type=str, default="DiffuSE", help='Base/DiffuSEC/DiffuSE/...')
     parser.add_argument('--c_gen', action='store_true', help='choose to use condition generated from condition generator')
     parser.add_argument('--lr', type=float, default=2e-4, help='learning rate')
     parser.add_argument('--n_epoch', type=int, default=50, help='number of epoch')

@@ -57,14 +57,16 @@ class CustomCollate(object):
             n_fft=self.fft_num,
             hop_length=self.win_shift,
             win_length=self.win_size,
-            window=torch.hann_window(self.fft_num)
+            window=torch.hann_window(self.fft_num),
+            return_complex=False
         ).permute(0, 3, 2, 1)  # [b, 2, T, F] real tensor, return_complex = false
         clean_list = torch.stft(
             clean_list,
             n_fft=self.fft_num,
             hop_length=self.win_shift,
             win_length=self.win_size,
-            window=torch.hann_window(self.fft_num)
+            window=torch.hann_window(self.fft_num),
+            return_complex=False
         ).permute(0, 3, 2, 1)  # [b, 2, T, F]
 
         return {

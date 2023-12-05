@@ -2,6 +2,7 @@ from scipy.signal import stft, get_window, correlate, resample
 from scipy.linalg import solve_toeplitz, toeplitz
 from pesq import pesq as pesq_inner  # pip install https://github.com/ludlows/python-pesq/archive/master.zip
 from pesq import PesqError
+# from pypesq import pesq
 import librosa
 from pystoi.stoi import stoi  # https://github.com/mpariente/pystoi
 import numpy as np
@@ -449,7 +450,6 @@ def pesq(clean_speech, processed_speech, fs):
                     2000 * np.log(1 / (pesq_mos / 4 - 999 / 4000) - 1)) / 2989  # remap to raw pesq score
     except PesqError:
         return 0.0
-
     return pesq_mos
 
 
@@ -555,11 +555,14 @@ def compare_complex(esti_list, label_list, frame_list, feat_type='sqrt'):
         for i in range(utt_num):
             # print("utt_num: ", i)
             tf_esti = esti_com[i, :, :, :].unsqueeze(dim=0).permute(0, 3, 2, 1).cpu()
-            t_esti = torch.istft(tf_esti, n_fft=320, hop_length=160, win_length=320,
+            tf_esti_com = torch.complex(tf_esti[:, :, :, 0], tf_esti[:, :, :, 1])
+            t_esti = torch.istft(tf_esti_com, n_fft=320, hop_length=160, win_length=320,
                                  window=torch.hann_window(320)).transpose(1, 0).squeeze(dim=-1).numpy()
             tf_label = label_com[i, :, :, :].unsqueeze(dim=0).permute(0, 3, 2, 1).cpu()
-            t_label = torch.istft(tf_label, n_fft=320, hop_length=160, win_length=320,
-                                  window=torch.hann_window(320)).transpose(1, 0).squeeze(dim=-1).numpy()
+            tf_label_com = torch.complex(tf_label[:, :, :, 0], tf_label[:, :, :, 1])
+            t_label = torch.istft(tf_label_com, n_fft=320, hop_length=160, win_length=320,
+                                  window=torch.hann_window(320)).transpose(1, 0).squeeze(
+                dim=-1).numpy()
             t_len = (frame_list[i] - 1) * 160
             t_esti, t_label = t_esti[:t_len], t_label[:t_len]
             esti_utts.append(t_esti)
