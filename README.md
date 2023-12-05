@@ -2,15 +2,21 @@
 
 **Update 12.5:**
 
+We have re-tested the method and uploaded the pre-trained model (c_gen, ddpm, and refiner).
+
+---
+
 In our recent work "DOSE: Diffusion Dropout with Adaptive Prior for Speech Enhancement, NeurIPS, 2023", we revisited why condition collapse happens -- (1) error accumulation (by finite iterative steps (mathematical) and learning errors (sample & true errors)), (2) non-dominent position of condition factor. We find the condition factor does help x_t recover x_0. Please read our recent work for more details.
+
+[paper](https://drive.google.com/file/d/1B0PS-N3m-rdREGd1uK0xU4KhLYDFnxI5/view?pli=1) [code](https://github.com/ICDM-UESTC/DOSE)
 
 ---
 
 We also investigate DR-DiffuSE to verify whether some conclusions from DOSE are correct. 
 
-The core difference between current version and previous one is that we make one modification: 
+The core difference between current version and previous one is: 
 
-(1) line 328-334 in src/ddpm_trainer.py -- due to the amplitude of spectrom is high, we should start from c_t/y_t, rather than pure Gaussian noise.
+- line 328-334 in src/ddpm_trainer.py -- due to the amplitude of spectrom is high, we should start from c_t/y_t, rather than pure Gaussian noise.
 
 Based on this small modification, we conclude that: 
 
@@ -137,24 +143,13 @@ We would like to thank the authors of previous related projects for generously s
 If you find the code useful for your research, please consider citing
 
 ```
-@inproceedings{tai2023revisting,
-  title={Revisiting Denoising Diffusion Probabilistic Models for Speech Enhancement: Condition Collapse, Efficiency and Refinement},
-  author={Wenxin Tai and Fan Zhou and Goce Trajcevski and Ting Zhong},
-  booktitle = {AAAI},
+@inproceedings{tai2023revisiting,
+  title={Revisiting denoising diffusion probabilistic models for speech enhancement: Condition collapse, efficiency and refinement},
+  author={Tai, Wenxin and Zhou, Fan and Trajcevski, Goce and Zhong, Ting},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={37},
+  number={11},
+  pages={13627--13635},
   year={2023}
 }
 ```
-
-## Extensions
-Note that there are some recent papers also address the condition collapse problem, we list them here for the convenience of readers.
-
-- [Blended Diffusion for Text-driven Editing of Natural Images](https://arxiv.org/abs/2111.14818)
-- [Discrete Contrastive Diffusion for Cross-Modal Music and Image Generation](https://arxiv.org/abs/2206.07771)
-- [Adding Conditional Control to Text-to-Image Diffusion Models](https://arxiv.org/abs/2302.05543)
-- [T2I-Adapter: Learning Adapters to Dig out More Controllable Ability for Text-to-Image Diffusion Models](https://arxiv.org/abs/2302.08453)
-
-
-We are currently working on this topic. If you have any questions about this code or are interested in the condition collapse problem, feel free to contact us: ``wxtai AT outlook.com``
-
-
-
