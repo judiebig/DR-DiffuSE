@@ -16,7 +16,7 @@ We also investigate DR-DiffuSE to verify whether some conclusions from DOSE are 
 
 The core difference between current version and previous one is: 
 
-- line 328-334 in src/ddpm_trainer.py -- due to the amplitude of spectrom is high, we should start from c_t/y_t, rather than pure Gaussian noise.
+- line 328-334 in src/ddpm_trainer.py -- since the amplitude of spectrogram is high, we should start from c_t/y_t, rather than pure Gaussian noise, or else there will be a training & inference mismatch.
 
 Based on this small modification, we conclude that: 
 
